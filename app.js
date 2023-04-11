@@ -47,8 +47,7 @@ let lastTime = 0
 let updateindex = 0
 const timePerSlide = 300
 let cursed = Math.random() < .000001 ? true : false 
-//there is a one-in-a-million chance that
-//something will happen to the renderer
+//there is a one-in-a-million chance that something will happen to the renderer
 
 //make the canvas always fill the screen
 function resize() {
@@ -553,15 +552,27 @@ function collisionDetection() {
   Detector.setBodies(detector, bodies)
   let collisions = Detector.collisions(detector)
   let ids = {}
+  let id, body
   for (let collisionId in collisions) {
     let collision = collisions[collisionId]
-    let id = collision.bodyA.id
-    ids[id] = true
-    id = collision.bodyB.id
-    ids[id] = true
+    body = collision.bodyA
+    id = body.id
+    while (!matterLinks[id]) {
+      body = body.parent
+      id = body.id
+    }
+    ids[id] = body
+    body = collision.bodyB
+    id = body.id
+    while (!matterLinks[id]) {
+      body = body.parent
+      id = body.id
+    }
+    ids[id] = body
   }
   for (let id in ids) {
     let block = matterLinks[id]
+    if (!block) {console.log(ids[id])}
     if (block && block.coverArt) {
       let coverArt = block.coverArt
       for (let layerId in coverArt.layers) {
@@ -569,9 +580,10 @@ function collisionDetection() {
         layer.color[0] = Math.max(layer.color[0]-5,0)
         layer.color[1] = Math.max(layer.color[1]-5,0)
         layer.color[2] = Math.max(layer.color[2]-5,0)
-        if (!layer.outline) {layer.outline={width:0}}
-        layer.outline.color = [255,0,0,.1]
-        layer.outline.width = Math.min(layer.outline.width+.1,.5)
+        if (!layer.outline) {layer.outline={width:0,color:[0,0,0]}}
+        layer.outline.color[3] = .05
+        layer.outline.color[0] = Math.min(layer.outline.color[0]+5,255)
+        layer.outline.width = Math.min(layer.outline.width+.01,.5)
       }
     }
   }
@@ -592,6 +604,7 @@ function update(inputTime) {
     const randomIndex = Math.floor(Math.random() * keys.length);
     const randomKey = keys[randomIndex];
     initializeLevel(levels[randomKey])
+    //initializeLevel(levels.level4)
   }
   //start the next loop
   updateindex++
@@ -650,24 +663,18 @@ let blocks = {
       layers: [
         {
           color: [100,100,0],
-          steps: 
-            [[0,0.16666666666666666],[0.16666666666666666,0],[0.3333333333333333,0],[0.5,0.3333333333333333],[0.6666666666666666,0],[0.6666666666666666,0],[0.8333333333333333,0],[1,0.16666666666666666],[1,0.3333333333333333],[0.6666666666666666,0.5],[1,0.6666666666666666],[1,0.8333333333333333],[0.8333333333333333,1],[0.6666666666666666,1],[0.5,0.6666666666666666],[0.3333333333333333,1],[0.16666666666666666,1],[0,0.8333333333333333],[0,0.6666666666666666],[0.3333333333333333,0.5],[0,0.3333333333333333]]
-        },
+          steps: [[0,0.166],[0.166,0],[0.333,0],[0.5,0.333],[0.666,0],[0.666,0],[0.833,0],[1,0.166],[1,0.333],[0.666,0.5],[1,0.666],[1,0.833],[0.833,1],[0.666,1],[0.5,0.666],[0.333,1],[0.166,1],[0,0.833],[0,0.666],[0.333,0.5],[0,0.333]]        },
         {
           color: [0,100,100,0.5],
-          steps: 
-          [[0.16666666666666666,0.16666666666666666],[0.3333333333333333,0.16666666666666666],[0.5,0.3333333333333333],[0.6666666666666666,0.16666666666666666],[0.8333333333333333,0.16666666666666666],[0.8333333333333333,0.3333333333333333],[0.6666666666666666,0.5],[0.8333333333333333,0.6666666666666666],[0.8333333333333333,0.8333333333333333],[0.6666666666666666,0.8333333333333333],[0.5,0.6666666666666666],[0.3333333333333333,0.8333333333333333],[0.16666666666666666,0.8333333333333333],[0.16666666666666666,0.6666666666666666],[0.3333333333333333,0.5],[0.16666666666666666,0.3333333333333333]]
-        },
+          steps: [[0.166,0.166],[0.333,0.166],[0.5,0.333],[0.666,0.166],[0.833,0.166],[0.833,0.333],[0.666,0.5],[0.833,0.666],[0.833,0.833],[0.666,0.833],[0.5,0.666],[0.333,0.833],[0.166,0.833],[0.166,0.666],[0.333,0.5],[0.166,0.333]]        },
         {
           color: [0,150,0],
-          steps:
-          [[0.5,0.3333333333333333],[0.3333333333333333,0.5],[0.5,0.6666666666666666],[0.6666666666666666,0.5]]
+          steps:[[0.5,0.333],[0.333,0.5],[0.5,0.666],[0.666,0.5]]
         }
       ]
     },
     physics: {
-      shape: [[0,0.16666666666666666],[0.16666666666666666,0],[0.3333333333333333,0],[0.5,0.3333333333333333],[0.6666666666666666,0],[0.6666666666666666,0],[0.8333333333333333,0],[1,0.16666666666666666],[1,0.3333333333333333],[0.6666666666666666,0.5],[1,0.6666666666666666],[1,0.8333333333333333],[0.8333333333333333,1],[0.6666666666666666,1],[0.5,0.6666666666666666],[0.3333333333333333,1],[0.16666666666666666,1],[0,0.8333333333333333],[0,0.6666666666666666],[0.3333333333333333,0.5],[0,0.3333333333333333]]
-    }
+      shape: [[0,0.166],[0.166,0],[0.333,0],[0.5,0.333],[0.666,0],[0.666,0],[0.833,0],[1,0.166],[1,0.333],[0.666,0.5],[1,0.666],[1,0.833],[0.833,1],[0.666,1],[0.5,0.666],[0.333,1],[0.166,1],[0,0.833],[0,0.666],[0.333,0.5],[0,0.333]]    }
   },
   ball: {
     coverArt: {
@@ -700,6 +707,20 @@ let blocks = {
     },
     physics: {
       shape: [[0.4,0],[0.6,0],[0.8,0.1],[0.9,0.2],[1,0.4],[1,0.6],[0.9,0.8],[0.8,0.9],[0.6,1],[0.4,1],[0.2,0.9],[0.1,0.8],[0,0.6],[0,0.4],[0.1,0.2],[0.2,0.1]]
+    }
+  },
+  test: {
+    coverArt: {
+      layers: [
+        {
+          color: [0,100,100],
+          steps: [[0,0],[0,0],[0.333,0],[0.5,0.5],[0.666,0],[1,0],[1,1],[0,1]]
+        }
+      ]
+    },
+    physics: {
+      shape: [[0,0],[0,0],[0.333,0],[0.5,0.5],[0.666,0],[1,0],[1,1],[0,1]]
+
     }
   }
 }
@@ -794,6 +815,18 @@ let levels = {
         }
       }
     }
+  },
+  level4: {
+    key: [
+      blocks.test,
+      blocks.clover,
+      blocks.basic
+    ],
+    layout: [
+      {x:550,y:0,key:0,scale:100},
+      {x:450,y:0,key:2,scale:100},
+      {x:500,y:500,key:1,scale:500,options:{isStatic:true}}
+    ]
   }
 }
 
