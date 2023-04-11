@@ -569,7 +569,9 @@ function collisionDetection() {
       let coverArt = block.coverArt
       for (let layerId in coverArt.layers) {
         let layer = coverArt.layers[layerId]
-        layer.color = [0,0,0,.25]
+        layer.color[0] = Math.max(layer.color[0]-5,0)
+        layer.color[1] = Math.max(layer.color[1]-5,0)
+        layer.color[2] = Math.max(layer.color[2]-5,0)
         if (layer.outline) {
           layer.outline.color = [255,255,255,.25]
         }
