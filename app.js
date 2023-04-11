@@ -548,7 +548,6 @@ getPlayerInputs()
 
 let detecters = {}
 function collisionDetection() {
-  //console.log(matterLinks)
   let bodies = Composite.allBodies(engine.world)
   let detector = Detector.create()
   Detector.setBodies(detector, bodies)
@@ -561,10 +560,8 @@ function collisionDetection() {
     id = collision.bodyB.id
     ids[id] = true
   }
-  //console.log(matterLinks)
   for (let id in ids) {
     let block = matterLinks[id]
-    if (!block) { console.log(id) }
     if (block && block.coverArt) {
       let coverArt = block.coverArt
       for (let layerId in coverArt.layers) {
