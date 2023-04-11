@@ -73,6 +73,7 @@ resize()
 let Engine = Matter.Engine,
     Runner = Matter.Runner,
     Bodies = Matter.Bodies,
+    Detector = Matter.Detector,
     Body = Matter.Body,
     Composite = Matter.Composite,
     Common = Matter.Common,
@@ -308,7 +309,7 @@ function render(inputOptions) {
       ctx.strokeStyle = `rgb(0, 150, 255)`
       ctx.stroke()
       if (newPath.length > 0) {
-        add({mode:"outline",stage:5,color:[0,150,255],steps:newPath,width:1})
+        addToRenderStack({mode:"outline",stage:5,color:[0,150,255],steps:newPath,width:1})
       }
     }
 
@@ -321,7 +322,7 @@ function render(inputOptions) {
         newPath.push([bounds.max.x,bounds.max.y])
         newPath.push([bounds.max.x,bounds.min.y])
         newPath.push([bounds.min.x,bounds.min.y])
-        add({stage:5,steps:newPath,color:[200,0,0],width:2,mode:"outline"})
+        addToRenderStack({stage:5,steps:newPath,color:[200,0,0],width:2,mode:"outline"})
       }
     }
     return renderStack
@@ -340,7 +341,15 @@ function render(inputOptions) {
       [canvasX,canvasY,false,true],
       [0,canvasY,false,true]
     ]})
+    //clip it to keep other stuff from going out
     renderStack[0].push({stage:0,mode:"clip",steps:[
+      [0,0],
+      [1000,0],
+      [1000,1000],
+      [0,1000]
+    ]})
+    //and draw the background
+    renderStack[0].push({stage:0,mode:"fill",color:[30,30,30],steps:[
       [0,0],
       [1000,0],
       [1000,1000],
@@ -425,7 +434,7 @@ function render(inputOptions) {
     }
   }
 
-  setup(inputOptions) || {}
+  setup()
   display()
 }
 
@@ -537,6 +546,38 @@ window.addEventListener("mousemove", (event) => {
 }
 getPlayerInputs()
 
+let detecters = {}
+function collisionDetection() {
+  //console.log(matterLinks)
+  let bodies = Composite.allBodies(engine.world)
+  let detector = Detector.create()
+  Detector.setBodies(detector, bodies)
+  let collisions = Detector.collisions(detector)
+  let ids = {}
+  for (let collisionId in collisions) {
+    let collision = collisions[collisionId]
+    let id = collision.bodyA.id
+    ids[id] = true
+    id = collision.bodyB.id
+    ids[id] = true
+  }
+  //console.log(matterLinks)
+  for (let id in ids) {
+    let block = matterLinks[id]
+    if (!block) { console.log(id) }
+    if (block && block.coverArt) {
+      let coverArt = block.coverArt
+      for (let layerId in coverArt.layers) {
+        let layer = coverArt.layers[layerId]
+        layer.color = [0,0,0,.25]
+        if (layer.outline) {
+          layer.outline.color = [255,255,255,.25]
+        }
+      }
+    }
+  }
+}
+
 //the main loop
 function update(inputTime) {
   const deltaTime = inputTime - lastTime
@@ -546,78 +587,30 @@ function update(inputTime) {
   reset() //resets anything for the next loop
   Runner.tick(runner, engine) //tick the Matter engine
   render({debugMode:false}) //render everthing
-
+  collisionDetection()
   if (updateindex % timePerSlide == 0) {
     const keys = Object.keys(levels);
-
     const randomIndex = Math.floor(Math.random() * keys.length);
-
     const randomKey = keys[randomIndex];
-
     initializeLevel(levels[randomKey])
   }
-
-  //addPhysicsObject(100, 100, 10, blocks.basic)
-
   //start the next loop
   updateindex++
   requestAnimationFrame(update)
 }
 
-/**all the blocks for building levels with, file structure is:
--name
---coverart
----layers
-----{color,steps,[rotationEffect],[outline{color,[width]}]}
----[files]
----[functions]
-----onRender()
-----inputs()
----physics
-----shape
-*/
+// all the blocks for building levels with, file structure is:
+// -name
+// --coverart
+// ---layers
+// ----{color,steps,[rotationEffect],[outline{color,[width]}]}
+// ---[files]
+// ---[functions]
+// ----onRender()
+// ----inputs()
+// ---physics
+// ----shape
 let blocks = {
-  star: {
-    coverArt: {
-      layers: [
-        {
-          color: [100,100,0],
-          steps: [
-            [0,0],
-            [.25,.5],
-            [0,1],
-            [.5,.75],
-            [1,1],
-            [.75,.5],
-            [1,0],
-            [.5,.25]
-          ]
-        },
-        {
-          color: [0,100,100,0.5],
-          steps: [
-            [.25,.25],
-            [.25,.75],
-            [.75,.75],
-            [.75,.25]
-          ]
-        }
-      ]
-    },
-    files: {
-      file: "Im a file"
-    },
-    functions: {
-      onRender: function(input) {
-      },
-      inputs: function(input) {
-
-      }
-    },
-    physics: {
-      shape: [[0,0],[.25,.5],[0,1],[.5,.75],[1,1],[.75,.5],[1,0],[.5,.25]]
-    }
-  },
   basic: {
     coverArt: {
       layers: [
@@ -651,6 +644,41 @@ let blocks = {
     },
     physics: {
       shape: [[0,0],[0,1],[1,1],[1,0]]
+    }
+  },
+  clover: {
+    coverArt: {
+      layers: [
+        {
+          color: [100,100,0],
+          steps: 
+            [[0,0.16666666666666666],[0.16666666666666666,0],[0.3333333333333333,0],[0.5,0.3333333333333333],[0.6666666666666666,0],[0.6666666666666666,0],[0.8333333333333333,0],[1,0.16666666666666666],[1,0.3333333333333333],[0.6666666666666666,0.5],[1,0.6666666666666666],[1,0.8333333333333333],[0.8333333333333333,1],[0.6666666666666666,1],[0.5,0.6666666666666666],[0.3333333333333333,1],[0.16666666666666666,1],[0,0.8333333333333333],[0,0.6666666666666666],[0.3333333333333333,0.5],[0,0.3333333333333333]]
+        },
+        {
+          color: [0,100,100,0.5],
+          steps: 
+          [[0.16666666666666666,0.16666666666666666],[0.3333333333333333,0.16666666666666666],[0.5,0.3333333333333333],[0.6666666666666666,0.16666666666666666],[0.8333333333333333,0.16666666666666666],[0.8333333333333333,0.3333333333333333],[0.6666666666666666,0.5],[0.8333333333333333,0.6666666666666666],[0.8333333333333333,0.8333333333333333],[0.6666666666666666,0.8333333333333333],[0.5,0.6666666666666666],[0.3333333333333333,0.8333333333333333],[0.16666666666666666,0.8333333333333333],[0.16666666666666666,0.6666666666666666],[0.3333333333333333,0.5],[0.16666666666666666,0.3333333333333333]]
+        },
+        {
+          color: [0,150,0],
+          steps:
+          [[0.5,0.3333333333333333],[0.3333333333333333,0.5],[0.5,0.6666666666666666],[0.6666666666666666,0.5]]
+        }
+      ]
+    },
+    files: {
+      file: "Im a file"
+    },
+    functions: {
+      onRender: function(input) {
+      },
+      inputs: function(input) {
+
+      }
+    },
+    physics: {
+      shape: [[0,0.16666666666666666],[0.16666666666666666,0],[0.3333333333333333,0],[0.5,0.3333333333333333],[0.6666666666666666,0],[0.6666666666666666,0],[0.8333333333333333,0],[1,0.16666666666666666],[1,0.3333333333333333],[0.6666666666666666,0.5],[1,0.6666666666666666],[1,0.8333333333333333],[0.8333333333333333,1],[0.6666666666666666,1],[0.5,0.6666666666666666],[0.3333333333333333,1],[0.16666666666666666,1],[0,0.8333333333333333],[0,0.6666666666666666],[0.3333333333333333,0.5],[0,0.3333333333333333]]
+
     }
   },
   ball: {
@@ -690,18 +718,17 @@ let blocks = {
   }
 }
 
-/**all the levels, file structure is:
--levelName {}
---key []
---layout []
----{x,y,key,scale,[options],[inputs]}
---[setupFunc] {}
---[files]
-*/
+// all the levels, file structure is:
+// -levelName {}
+// --key []
+// --layout []
+// ---{x,y,key,scale,[options],[inputs]}
+// --[setupFunc] {}
+// --[files]
 let levels = {
   level1: {
     key: [
-      blocks.star,
+      blocks.clover,
       blocks.basic,
       blocks.ball
     ],
@@ -744,7 +771,7 @@ let levels = {
   },
   level2: {
     key: [
-      blocks.star,
+      blocks.clover,
       blocks.basic
     ],
     layout: [
@@ -754,18 +781,35 @@ let levels = {
       {x: 400, y: 400, scale: 100, key: 1, inputs: {shape: [[-1,0],[-1,2],[1,2],[1,0]]}},
       {x: 600, y: 400, scale: 100, key: 1, inputs: {shape: [[0,0],[0,3],[2,3],[2,0]]}},
       {x: 100, y: 900, key: 1, scale: 100, inputs: {shape:[[0,0],[0,1],[8,1],[8,0]]}, options: {isStatic: true}}
-
-
-
     ],
     setupFunc: function(self) {
       for (let blockIndex in self.layout) {
         //self.layout[blockIndex].options = {isStatic: true}
       }
     }
+  },
+  level3: {
+    key: [
+      blocks.clover,
+      blocks.basic
+    ],
+    layout: [
+      {x: 150, y: 900, key: 1, scale: 100, inputs: {shape:[[0,0],[0,1],[8,1],[8,0]]}, options: {isStatic: true}}
+    ],
+    setupFunc: function(self) {
+      for (let i = 0; i < 10; i++) {
+        self.layout[1+i] = 
+        {
+          x: Math.floor(Math.random()*800+100),
+          y: Math.floor(Math.random()*800), 
+          key: 0,
+          scale: (Math.floor(Math.random()*3)+1)*50, 
+          inputs: {angle: Math.random()*360}
+        }
+      }
+    }
   }
 }
-
 
 //all my plans
 const todo = {
@@ -784,7 +828,7 @@ const todo = {
  "Add a log of how many times I have reloaded the program" : "Done",
  "Redo addPhysicsObject to take a block as input" : "Canceled",
  "Fix renders outline on physics objects so it scales correctly" : "Done",
- "Add collisions" : "Planned",
+ "Add collisions" : "In progress",
  "Add collision functions by block / level" : "Planned",
  "Add block tags (for collisions / ?)" : "Planned",
  "Add moving veiw area (like when a character moves around in mario)" : "Planned",
@@ -831,8 +875,6 @@ function debugTodo() {
   console.debug(message)
 }
 debugTodo()
-
-cursed = true
 
 //update as fast as possible
 requestAnimationFrame(update)
