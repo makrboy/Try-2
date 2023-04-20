@@ -545,73 +545,70 @@ window.addEventListener("mousemove", (event) => {
 }
 getPlayerInputs()
 
-let detectors = []
-
 function collisionDetection() {
-  let bodies = Composite.allBodies(engine.world)
-  
-  let testDetector = Detector.create()
-  Detector.setBodies(testDetector, bodies)
-  detectors[0] = testDetector
-  
-  for (let detectorId in detectors) {
-    let collisions = Detector.collisions(detectors[detectorId])
-    for (let collisionId in collisions) {
-      let collision = collisions[collisionId]
-      let bodyA = collision.bodyA
-      let bodyB = collision.bodyB
-      while (!matterLinks[bodyA.id]) {
-        bodyA = bodyA.parent
-      }
-      while (!matterLinks[bodyB.id]) {
-        bodyB = bodyB.parent
-      }
-      collision = [bodyA.id, bodyB.id]
+  //grab all matter bodies
+  let matterBodies = Composite.allBodies(engine.world)
 
+  //create an array find which bodies to check
+  let collisionBodies = []
 
-      console.log(collision)
+  //check each body to see if it has collision detection enabled
+  for (let matterBodyId in matterBodies) {
+    let matterBody = matterBodies[matterBodyId]
+    let body = matterLinks[matterBody.id]
+    if (body.physics && body.physics.collisions) {
+      collisionBodies.push(matterBody)
+
+      //clear current
+      body.physics.collisions.current = []
     }
   }
-  // let bodies = Composite.allBodies(engine.world)
-  // let detector = Detector.create()
-  // Detector.setBodies(detector, bodies)
-  // let collisions = Detector.collisions(detector)
-  // let ids = {}
-  // let id, body
-  // for (let collisionId in collisions) {
-  //   let collision = collisions[collisionId]
-  //   body = collision.bodyA
-  //   id = body.id
-  //   while (!matterLinks[id]) {
-  //     body = body.parent
-  //     id = body.id
-  //   }
-  //   ids[id] = body
-  //   body = collision.bodyB
-  //   id = body.id
-  //   while (!matterLinks[id]) {
-  //     body = body.parent
-  //     id = body.id
-  //   }
-  //   ids[id] = body
-  // }
-  // for (let id in ids) {
-  //   let block = matterLinks[id]
-  //   if (!block) {console.log(ids[id])}
-  //   if (block && block.coverArt) {
-  //     let coverArt = block.coverArt
-  //     for (let layerId in coverArt.layers) {
-  //       let layer = coverArt.layers[layerId]
-  //       layer.color[0] = Math.max(layer.color[0]-5,0)
-  //       layer.color[1] = Math.max(layer.color[1]-5,0)
-  //       layer.color[2] = Math.max(layer.color[2]-5,0)
-  //       if (!layer.outline) {layer.outline={width:0,color:[0,0,0]}}
-  //       layer.outline.color[3] = .05
-  //       layer.outline.color[0] = Math.min(layer.outline.color[0]+5,255)
-  //       layer.outline.width = Math.min(layer.outline.width+.01,.5)
-  //     }
-  //   }
-  // }
+
+  //create a detector and get all collisions
+  let detector = Detector.create()
+  Detector.setBodies(detector, collisionBodies)
+  let rawCollisions = Detector.collisions(detector)
+
+  //make a new set of collisions that is just the ids
+  let collisions = []
+  for (let collisionId in rawCollisions) {
+    let collision = rawCollisions[collisionId]
+    let bodyA = collision.bodyA
+    let bodyB = collision.bodyB
+
+    //make sure the id is useable
+    while (!matterLinks[bodyA.id]) { bodyA = bodyA.parent }
+    while (!matterLinks[bodyB.id]) { bodyB = bodyB.parent }
+
+    //add it both ways
+    collisions.push([bodyA.id,bodyB.id])
+    collisions.push([bodyB.id,bodyA.id])
+  }
+
+  //check for collisions taking tags into acount
+  for (let collisionId in collisions) {
+    let collision = collisions[collisionId]
+    let bodyA = matterLinks[collision[0]]
+    let bodyB = matterLinks[collision[1]]
+    for (let tagAId in bodyA.physics.collisions.collisionTags) {
+      let target = bodyA.physics.collisions.collisionTags[tagAId]
+      for (let tagBId in bodyB.physics.collisions.selfTags) {
+        if (target == bodyB.physics.collisions.selfTags[tagBId]) {
+
+          //add bodyBs id to bodyAs current collisions
+          bodyA.physics.collisions.current.push(collision[1])
+
+          //if bodyA has a collision function, run it
+          if (bodyA.functions && bodyA.functions.onCollision) {
+            bodyA.functions.onCollision(collision)
+          }
+
+          //break the loop to speed it up
+          break
+        }
+      }
+    }
+  }
 }
 
 //the main loop
@@ -631,6 +628,8 @@ function update(inputTime) {
     initializeLevel(levels[randomKey])
     //initializeLevel(levels.level4)
   }
+
+
   //start the next loop
   updateindex++
   requestAnimationFrame(update)
@@ -638,14 +637,19 @@ function update(inputTime) {
 
 // all the blocks for building levels with, file structure is:
 // -name
-// --coverart
+// --coverArt
 // ---layers
 // ----{color,steps,[rotationEffect],[outline{color,[width]}]}
 // ---[files]
 // ---[functions]
+// ----onCollision()
 // ----onRender()
 // ----inputs()
 // ---physics
+// ----collisions
+// -----curent []
+// -----selfTags []
+// -----collisionTags []
 // ----shape
 let blocks = {
   basic: {
@@ -680,6 +684,9 @@ let blocks = {
       }
     },
     physics: {
+      collisions: {
+        selfTags: ["basic", "solid"]
+      },
       shape: [[0,0],[0,1],[1,1],[1,0]]
     }
   },
@@ -698,15 +705,21 @@ let blocks = {
         }
       ]
     },
+    functions: {
+      onCollision: function(collision) {
+        //todo
+        let matterBodies = Composite.allBodies(engine.world)
+        let matterBody = matterBodies[collision[0]]
+        if (matterBody && (!matterBody.isStatic)) {
+          Body.applyForce(matterBody, matterBody.position, {x:0,y:-.5})
+        }
+      }
+    },
     physics: {
       collisions : {
-        selfTags: ["clover","solid"],
-        colideTags: ["solid"]
-      },
-      functions: {
-        collision: function(collision) {
-          
-        }
+        current: [],
+        selfTags: ["clover", "solid"],
+        collisionTags: ["solid"]
       },
       shape: [[0,0.166],[0.166,0],[0.333,0],[0.5,0.333],[0.666,0],[0.666,0],[0.833,0],[1,0.166],[1,0.333],[0.666,0.5],[1,0.666],[1,0.833],[0.833,1],[0.666,1],[0.5,0.666],[0.333,1],[0.166,1],[0,0.833],[0,0.666],[0.333,0.5],[0,0.333]]    }
   },
@@ -882,8 +895,8 @@ const todo = {
  "Redo addPhysicsObject to take a block as input" : "Canceled",
  "Fix renders outline on physics objects so it scales correctly" : "Done",
  "Add collisions" : "In progress",
- "Add block tags (for collisions / ?)" : "Planned",
- "Add collision functions by block / level" : "Planned",
+ "Add block tags (for collisions / ?)" : "Done",
+ "Add collision functions by block / level" : "In progress",
  "Switch to webgl" : "Planned",
  "Add moving veiw area (like when a character moves around in mario)" : "Planned",
  "Add a charater" : "Planned",
