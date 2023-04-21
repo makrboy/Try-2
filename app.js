@@ -182,16 +182,23 @@ function initializeLevel(level) {
   }
 }
 
-//render everything on 
+//render everything 
 function render(inputOptions) {
   
+  //run any onRender functions in the blocks
+  for (let link in matterLinks) {
+    let body = matterLinks[link]
+    if (body.functions && body.functions.onRender) {
+      body.functions.onRender(link)
+    }
+  }
+
+  //set options
   let options = {
     renderWireframes: false,
     renderCoverArt: true,
     renderBounds: false,
     debugMode: false,
-    shake: {a:0,b:0},
-    spin: {a:0,b:0}
   }
   inputOptions = inputOptions || {}
   for (let settingName in options) {
@@ -669,8 +676,6 @@ let blocks = {
       file: "Im a file"
     },
     functions: {
-      onRender: function(input) {
-      },
       inputs: function(input, self) {
         if (input) {
           if (input.shape) {self.coverArt.layers[0].steps = input.shape
@@ -706,13 +711,24 @@ let blocks = {
       ]
     },
     functions: {
+      onRender: function(id) {
+        let self = matterLinks[id]
+        if (self.physics.collisions.current.length > 0) {
+          self.coverArt.layers[0].color = [255, 0, 0, .5]
+        } else {
+          self.coverArt.layers[0].color = [100, 100, 0]
+        }
+      },
       onCollision: function(collision) {
         //todo
-        let matterBodies = Composite.allBodies(engine.world)
-        let matterBody = matterBodies[collision[0]]
-        if (matterBody && (!matterBody.isStatic)) {
-          Body.applyForce(matterBody, matterBody.position, {x:0,y:-.5})
-        }
+        let self = matterLinks[collision[0]]
+        //self.coverArt.layers[0].color = [255, 0, 0, .5]
+
+        // let matterBodies = Composite.allBodies(engine.world)
+        // let matterBody = matterBodies[collision[0]]
+        // if (matterBody && (!matterBody.isStatic)) {
+        //   Body.applyForce(matterBody, matterBody.position, {x:0,y:-.5})
+        // }
       }
     },
     physics: {
