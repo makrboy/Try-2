@@ -959,7 +959,5 @@ function debugTodo() {
 }
 debugTodo()
 
-cursed = true
-
 //update as fast as possible
 requestAnimationFrame(update)
