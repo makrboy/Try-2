@@ -712,6 +712,7 @@ let blocks = {
     },
     functions: {
       onRender: function(id) {
+        //if there is a collision turn red, else turn green
         let self = matterLinks[id]
         if (self.physics.collisions.current.length > 0) {
           self.coverArt.layers[0].color = [255, 0, 0, .5]
@@ -720,15 +721,16 @@ let blocks = {
         }
       },
       onCollision: function(collision) {
-        //todo
-        let self = matterLinks[collision[0]]
-        //self.coverArt.layers[0].color = [255, 0, 0, .5]
-
-        // let matterBodies = Composite.allBodies(engine.world)
-        // let matterBody = matterBodies[collision[0]]
-        // if (matterBody && (!matterBody.isStatic)) {
-        //   Body.applyForce(matterBody, matterBody.position, {x:0,y:-.5})
-        // }
+        //anything that collides with this gets spun and thrown
+        let blocks = Composite.allBodies(engine.world)
+        for (let blockIndex in blocks) {
+          if (blocks[blockIndex].id == collision[1] && !blocks[blockIndex].isStatic) {
+            let block = blocks[blockIndex]
+            Body.applyForce(block, block.position, {x:0,y:-.05})
+            Body.setAngularVelocity(block, .25)
+            break
+          }
+        }
       }
     },
     physics: {
@@ -910,9 +912,9 @@ const todo = {
  "Add a log of how many times I have reloaded the program" : "Done",
  "Redo addPhysicsObject to take a block as input" : "Canceled",
  "Fix renders outline on physics objects so it scales correctly" : "Done",
- "Add collisions" : "In progress",
+ "Add collisions" : "Done",
  "Add block tags (for collisions / ?)" : "Done",
- "Add collision functions by block / level" : "In progress",
+ "Add collision functions by block / level" : "Done",
  "Switch to webgl" : "Planned",
  "Add moving veiw area (like when a character moves around in mario)" : "Planned",
  "Add a charater" : "Planned",
