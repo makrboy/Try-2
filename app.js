@@ -42,11 +42,12 @@ playerInput.keys.allowed = ['tab', 'delete', 'escape', 'backspace', '0', '9', '8
 playerInput.mouse.buttons.names = {0:"left",1:"middle",2:"right"}
 let matterLinks = {}
 let warp = false
-let time = 0
-let lastTime = 0
+let time = Date.now()
+let lastTime = time
 let updateindex = 0
-const timePerSlide = 300
-let cursed = Math.random() < .000001 ? true : false 
+const maxDeltaTime = 100
+const framesPerSlide = 250
+const cursed = Math.random() < .000001 ? true : false 
 //there is a one-in-a-million chance that something will happen to the renderer
 
 //make the canvas always fill the screen
@@ -552,6 +553,7 @@ window.addEventListener("mousemove", (event) => {
 }
 getPlayerInputs()
 
+//detect collisions for functions
 function collisionDetection() {
   //grab all matter bodies
   let matterBodies = Composite.allBodies(engine.world)
@@ -625,10 +627,12 @@ function update(inputTime) {
   time = inputTime
   
   reset() //resets anything for the next loop
-  Runner.tick(runner, engine) //tick the Matter engine
+
+  Engine.update(engine, Math.floor(deltaTime, maxDeltaTime)) //tick the engine with deltaTime to keep speed 
+
   render({debugMode:false}) //render everthing
   collisionDetection()
-  if (updateindex % timePerSlide == 0) {
+  if (updateindex % framesPerSlide == 0) {
     const keys = Object.keys(levels);
     const randomIndex = Math.floor(Math.random() * keys.length);
     const randomKey = keys[randomIndex];
@@ -869,13 +873,13 @@ let levels = {
       {x: 150, y: 900, key: 1, scale: 100, inputs: {shape:[[0,0],[0,1],[8,1],[8,0]]}, options: {isStatic: true}}
     ],
     setupFunc: function(self) {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 500; i++) {
         self.layout[1+i] = 
         {
           x: Math.floor(Math.random()*800+100),
           y: Math.floor(Math.random()*800), 
-          key: 0,
-          scale: (Math.floor(Math.random()*3)+1)*50, 
+          key: 1,
+          scale: (Math.floor(Math.random()*3)+1)*25, 
           inputs: {angle: Math.random()*360}
         }
       }
@@ -915,7 +919,11 @@ const todo = {
  "Add collisions" : "Done",
  "Add block tags (for collisions / ?)" : "Done",
  "Add collision functions by block / level" : "Done",
+ "Make update speed adjust to browser speed" : "Void",
+ "Make the Engine update speed take deltaTime" : "Done",
+ "Add a debug option to show collisions" : "Planned",
  "Switch to webgl" : "Planned",
+ "Add compound blocks with joints" : "Planned",
  "Add moving veiw area (like when a character moves around in mario)" : "Planned",
  "Add a charater" : "Planned",
  "Add more characters" : "Planned",
@@ -923,7 +931,7 @@ const todo = {
  "Add sounds?" : "Planned",
  "Add saves" : "Planned",
  "Add a modular GUI (use a library?)" : "Planned",
- "Add level / block creator" : "Planned",
+ "Add level / block creator / editor" : "Planned",
  "Add enemies?" : "Planned",
  "Add a server where people can upload/download their profiles/levels?" : "Planned",
 }
