@@ -199,6 +199,7 @@ function render(inputOptions) {
     renderWireframes: false,
     renderCoverArt: true,
     renderBounds: false,
+    showCollisions: false,
     debugMode: false,
   }
   inputOptions = inputOptions || {}
@@ -210,8 +211,6 @@ function render(inputOptions) {
 
   //calculate render
   function setup() {
-    //clear slate
-
     //grab all the bodies from Matter
     let matterBodies = Composite.allBodies(engine.world)
 
@@ -280,13 +279,37 @@ function render(inputOptions) {
       } 
     }
 
-    //render wireframes
-    if (options.renderWireframes || options.debugMode) {
+    //render wireframes / show collisions
+    if (options.renderWireframes || options.showCollisions || options.debugMode) {
       let body, part, i, j, k
-      let newPath = []
-      ctx.beginPath()
+
+      //check for collisions
+
+      //setup the detector
+      let detector = Detector.create()
+      Detector.setBodies(detector, matterBodies)
+      let rawCollisions = Detector.collisions(detector)
+
+      //make a new set of collisions that is just the ids
+      let collisions = []
+      for (let collisionId in rawCollisions) {
+        let collision = rawCollisions[collisionId]
+        let bodyA = collision.bodyA
+        let bodyB = collision.bodyB
+
+
+        //make sure the id is useable
+        while (!matterLinks[bodyA.id]) { bodyA = bodyA.parent }
+        while (!matterLinks[bodyB.id]) { bodyB = bodyB.parent }
+
+        //add it
+        collisions.push(bodyA.id)
+        collisions.push(bodyB.id)
+      }
+
       // render all bodies
       for (i = 0; i < matterBodies.length; i++) {
+        let newPath = []
         body = matterBodies[i]
         if (!body.render.visible) continue;
 
@@ -294,29 +317,51 @@ function render(inputOptions) {
         for (k = body.parts.length > 1 ? 1 : 0; k < body.parts.length; k++) {
           part = body.parts[k];
           newPath.push([part.vertices[0].x, part.vertices[0].y,true])
-          ctx.moveTo(part.vertices[0].x, part.vertices[0].y)
           for (j = 1; j < part.vertices.length; j++) {
             if (!part.vertices[j - 1].isInternals) {
               newPath.push([part.vertices[j].x, part.vertices[j].y])
-              ctx.lineTo(part.vertices[j].x, part.vertices[j].y)
             } else {
               newPath.push([part.vertices[j].x, part.vertices[j].y,true])
-              ctx.moveTo(part.vertices[j].x, part.vertices[j].y)
             }
             if (part.vertices[j].isInternal) {
               newPath.push([part.vertices[(j + 1) % part.vertices.length].x, part.vertices[(j + 1) % part.vertices.length].y,true])
-              ctx.moveTo(part.vertices[(j + 1) % part.vertices.length].x, part.vertices[(j + 1) % part.vertices.length].y)
             }
           }
           newPath.push([part.vertices[0].x, part.vertices[0].y])
-          ctx.lineTo(part.vertices[0].x, part.vertices[0].y)
         }
-      }
-      ctx.lineWidth = 1
-      ctx.strokeStyle = `rgb(0, 150, 255)`
-      ctx.stroke()
-      if (newPath.length > 0) {
-        addToRenderStack({mode:"outline",stage:5,color:[0,150,255],steps:newPath,width:1})
+        if (newPath.length > 0) {
+
+          //render the outline
+          if (options.renderWireframes || options.debugMode) {
+            addToRenderStack({mode:"outline",stage:5,color:[0,150,255],steps:newPath,width:1})
+          }
+  
+          //show any collisions
+          if (options.showCollisions || options.debugMode) {
+  
+            //set color for no collisions
+            let color = [0,255,0,.25]
+  
+            //find a useable id
+            let temp = part
+            while (!matterLinks[temp.id]) { temp = temp.parent }
+            const id = temp.id
+
+            //check the collisions list
+            for (let index = 0; index < collisions.length; index++) {
+
+              //if its a match, change color
+              if (collisions[index] == id) {
+                color = [255,0,0,.25]
+
+                //break for speed
+                break
+              }
+            }
+            addToRenderStack({mode:"fill",stage:5,color:color,steps:newPath,width:1})
+  
+          }
+        }  
       }
     }
 
@@ -332,6 +377,7 @@ function render(inputOptions) {
         addToRenderStack({stage:5,steps:newPath,color:[200,0,0],width:2,mode:"outline"})
       }
     }
+
     return renderStack
   }
 
@@ -630,14 +676,13 @@ function update(inputTime) {
 
   Engine.update(engine, Math.floor(deltaTime, maxDeltaTime)) //tick the engine with deltaTime to keep speed 
 
-  render({debugMode:false}) //render everthing
+  render({showCollisions:true,renderCoverArt:false}) //render everthing
   collisionDetection()
   if (updateindex % framesPerSlide == 0) {
     const keys = Object.keys(levels);
     const randomIndex = Math.floor(Math.random() * keys.length);
     const randomKey = keys[randomIndex];
     initializeLevel(levels[randomKey])
-    //initializeLevel(levels.level4)
   }
 
 
@@ -866,11 +911,10 @@ let levels = {
   },
   level3: {
     key: [
-      blocks.clover,
       blocks.basic
     ],
     layout: [
-      {x: 150, y: 900, key: 1, scale: 100, inputs: {shape:[[0,0],[0,1],[8,1],[8,0]]}, options: {isStatic: true}}
+      {x: 150, y: 900, key: 0, scale: 100, inputs: {shape:[[0,0],[0,1],[8,1],[8,0]]}, options: {isStatic: true}}
     ],
     setupFunc: function(self) {
       for (let i = 0; i < 500; i++) {
@@ -878,7 +922,7 @@ let levels = {
         {
           x: Math.floor(Math.random()*800+100),
           y: Math.floor(Math.random()*800), 
-          key: 1,
+          key: 0,
           scale: (Math.floor(Math.random()*3)+1)*25, 
           inputs: {angle: Math.random()*360}
         }
@@ -908,20 +952,20 @@ const todo = {
  "Fix coverArt " : "Done",
  "Let canvas change size" : "Done",
  "Add key inputs" : "Done",
- "Add char inputs" : "Canceled",
+ "Add char inputs" : "Void",
  "Add mouse button inputs" : "Done",
  "Add mouse scroll input" : "Done",
  "Add mouse position input" : "Done",
  "Add a nice todo list with feedback" : "Done",
  "Add a log of how many times I have reloaded the program" : "Done",
- "Redo addPhysicsObject to take a block as input" : "Canceled",
+ "Redo addPhysicsObject to take a block as input" : "Void",
  "Fix renders outline on physics objects so it scales correctly" : "Done",
  "Add collisions" : "Done",
  "Add block tags (for collisions / ?)" : "Done",
  "Add collision functions by block / level" : "Done",
  "Make update speed adjust to browser speed" : "Void",
  "Make the Engine update speed take deltaTime" : "Done",
- "Add a debug option to show collisions" : "Planned",
+ "Add a debug option to show collisions" : "Done",
  "Switch to webgl" : "Planned",
  "Add compound blocks with joints" : "Planned",
  "Add moving veiw area (like when a character moves around in mario)" : "Planned",
