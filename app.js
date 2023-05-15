@@ -1013,7 +1013,8 @@ let levels = {
       {bodyA: 1, bodyB: 2, stiffness: .01},
       {bodyA: 1, bodyB: 3, stiffness: .01},
       {bodyA: 2, bodyB: 3, stiffness: .01},
-    ]
+    ],
+    size: 10000
   }
 }
 
@@ -1042,13 +1043,13 @@ const todo = {
  "Add a debug option to show collisions" : "Done",
  "Add constraints" : "Done",
  "Add a render option to show constraints" : "Done",
+ "Create a viewport" : "Planned",
+ "Fix constraint rendering to take pointA / B into account" : "Planned",
  "Add shapes that have multiple parts / constraints" : "Planned",
  "Switch to webgl" : "Planned",
- "Add moving veiw area (like when a character moves around in mario)" : "Planned",
  "Add a charater" : "Planned",
  "Add levels" : "Planned",
  "Add more characters" : "Planned",
- "Make Matter levels have any size" : "Planned",
  "Add sounds?" : "Planned",
  "Add saves" : "Planned",
  "Create a modular GUI" : "Planned",
