@@ -251,13 +251,25 @@ function render(inputOptions) {
     ...inputOptions
   }
 
+  if (options.debugMode) {
+    options = {
+      showWireframes: true,
+      showCoverArt: false,
+      showBounds: false,
+      showCollisions: true,
+      showConstraints: true,
+      debugMode: true,
+      ...inputOptions  
+    }
+  }
+
   //calculate render
   function setup() {
     //grab all the bodies from Matter
     let matterBodies = Composite.allBodies(engine.world)
 
     // //render block art 
-    if (options.showCoverArt && !options.debugMode) {
+    if (options.showCoverArt) {
       for (let matterBodyIndex in matterBodies) {
         const matterBody = matterBodies[matterBodyIndex]
         const matterBodyLink = matterBody.id
@@ -322,7 +334,7 @@ function render(inputOptions) {
     }
 
     //render wireframes / show collisions
-    if (options.showWireframes || options.showCollisions || options.debugMode) {
+    if (options.showWireframes || options.showCollisions) {
       let body, part, i, j, k
 
       //check for collisions
@@ -374,12 +386,12 @@ function render(inputOptions) {
         if (newPath.length > 0) {
 
           //render the outline
-          if (options.showWireframes || options.debugMode) {
+          if (options.showWireframes) {
             addToRenderStack({mode:"outline",stage:5,color:[0,150,255],steps:newPath,width:1})
           }
   
           //show any collisions
-          if (options.showCollisions || options.debugMode) {
+          if (options.showCollisions) {
   
             //set color for no collisions
             let color = [0,255,0,.25]
@@ -409,7 +421,7 @@ function render(inputOptions) {
     }
 
     //render bounding boxes 
-    if (options.showBounds || options.debugMode) {
+    if (options.showBounds) {
       for (let bodyIndex in matterBodies) {
         const bounds = matterBodies[bodyIndex].bounds
         let newPath = []
@@ -422,7 +434,7 @@ function render(inputOptions) {
     }
 
     //render constraints
-    if (options.showConstraints || options.debugMode) {
+    if (options.showConstraints) {
       for (const constraintIndex in engine.world.constraints) {
         const constraint = engine.world.constraints[constraintIndex]
         const pointA = constraint.bodyA.position
@@ -1013,8 +1025,7 @@ let levels = {
       {bodyA: 1, bodyB: 2, stiffness: .01},
       {bodyA: 1, bodyB: 3, stiffness: .01},
       {bodyA: 2, bodyB: 3, stiffness: .01},
-    ],
-    size: 10000
+    ]
   }
 }
 
