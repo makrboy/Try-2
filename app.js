@@ -48,7 +48,8 @@ let updateindex = 0
 let viewport = {
   size: 1000,
   x: 0,
-  y: 0
+  y: 0,
+  targetId: null
 }
 const maxDeltaTime = 100
 const framesPerSlide = 250
@@ -252,6 +253,7 @@ function render(inputOptions) {
     showBounds: false,
     showCollisions: false,
     showConstraints: false,
+    showViewportTarget: false,
     debugMode: false,
     ...inputOptions
   }
@@ -263,6 +265,7 @@ function render(inputOptions) {
       showBounds: false,
       showCollisions: true,
       showConstraints: true,
+      showViewportTarget: true,
       debugMode: true,
       ...inputOptions  
     }
@@ -338,8 +341,8 @@ function render(inputOptions) {
       } 
     }
 
-    //render wireframes / show collisions
-    if (options.showWireframes || options.showCollisions) {
+    //render wireframes / show collisions / show viewport target
+    if (options.showWireframes || options.showCollisions || showViewportTarget) {
       let body, part, i, j, k
 
       //check for collisions
@@ -420,6 +423,11 @@ function render(inputOptions) {
 
             //add it to the renderStack
             addToRenderStack({mode:"fill",stage:5,color:color,steps:newPath,width:1})
+          }
+
+          //show the viewport target
+          if (options.showViewportTarget && body.id == viewport.targetId) {
+            addToRenderStack({mode:"fill",stage:5,color:[0,0,255,.25],steps:newPath})
           }
         }  
       }
@@ -745,6 +753,35 @@ function collisionDetection() {
   }
 }
 
+//make the viewport follow a target block
+function viewportFollow() {
+  const targetId = viewport.targetId
+
+  //if there is no target, set target to a random block
+  if (!(matterLinks[targetId])) {
+    console.log("trying for a target")
+    const blocks = Object.keys(matterLinks)
+    const target = blocks[Math.floor(Math.random()*blocks.length)]
+    viewport.targetId = target
+  }
+  else {
+
+    //find the target body
+    let matterBodies = Composite.allBodies(engine.world)
+    for (let bodyIndex in matterBodies) {
+      const body = matterBodies[bodyIndex]
+      if (body.id == targetId) {
+        const targetPosistion = body.position
+
+        //set viewport position
+        viewport.x = (targetPosistion.x - viewport.size / 2)
+        viewport.y = (targetPosistion.y - viewport.size / 2)
+        break
+      }
+    }
+  }
+}
+
 //the main loop
 function update(inputTime) {
   const deltaTime = inputTime - lastTime
@@ -756,17 +793,17 @@ function update(inputTime) {
   Engine.update(engine, Math.floor(deltaTime, maxDeltaTime)) //tick the engine with deltaTime to keep speed 
 
   render({debugMode:true}) //render everthing
+
   collisionDetection() //run collision functions / generate collision stats
+
+  viewportFollow()
+  
   if (updateindex % framesPerSlide == 0) {
     const keys = Object.keys(levels);
     const randomIndex = Math.floor(Math.random() * keys.length);
     const randomKey = keys[randomIndex];
     initializeLevel(levels[randomKey])
   }
-
-  viewport.x += Math.cos(updateindex/50 )*5
-  viewport.y += Math.sin(updateindex/100)*2.5
-  viewport.size += Math.sin(updateindex/25)*25
 
   //start the next loop
   updateindex++
@@ -1068,7 +1105,9 @@ const todo = {
  "Add constraints" : "Done",
  "Add a render option to show constraints" : "Done",
  "Create a viewport" : "Done",
- "Make the viewport follow a block" : "Planned",
+ "Make the viewport follow a block" : "Done",
+ "Add a render option to show the viewpoint target" : "Done",
+ "Make the viewport follow more smooth" : "Planned",
  "Fix constraint rendering to take pointA / B into account" : "Planned",
  "Add shapes that have multiple parts / constraints" : "Planned",
  "Switch to webgl" : "Planned",
