@@ -45,6 +45,11 @@ let warp = false
 let time = Date.now()
 let lastTime = time
 let updateindex = 0
+let viewport = {
+  size: 1000,
+  x: 0,
+  y: 0
+}
 const maxDeltaTime = 100
 const framesPerSlide = 250
 const cursed = Math.random() < .000001 ? true : false 
@@ -463,20 +468,23 @@ function render(inputOptions) {
       [canvasX,canvasY,false,true],
       [0,canvasY,false,true]
     ]})
+
     //clip it to keep other stuff from going out
     renderStack[0].push({stage:0,mode:"clip",steps:[
-      [0,0],
-      [1000,0],
-      [1000,1000],
-      [0,1000]
+      [viewport.x,viewport.y],
+      [viewport.size+viewport.x,viewport.y],
+      [viewport.size+viewport.x,viewport.size+viewport.y],
+      [viewport.x,viewport.size+viewport.y]
     ]})
+
     //and draw the background
     renderStack[0].push({stage:0,mode:"fill",color:[30,30,30],steps:[
-      [0,0],
-      [1000,0],
-      [1000,1000],
-      [0,1000]
+      [viewport.x,viewport.y],
+      [viewport.size+viewport.x,viewport.y],
+      [viewport.size+viewport.x,viewport.size+viewport.y],
+      [viewport.x,viewport.size+viewport.y]
     ]})
+
     //sort the stack
     let list = Object.keys(renderStack)
     const len = list.length
@@ -493,7 +501,7 @@ function render(inputOptions) {
     //render the stack
     for (let key in list) {
       const subStack = renderStack[list[key]]
-      const scale = {x:screenX/1000,y:screenY/1000}
+      const scale = {x:screenX/viewport.size,y:screenY/viewport.size}
       for (let index in subStack) {
         const item = subStack[index]
         let color = item.color
@@ -509,34 +517,36 @@ function render(inputOptions) {
           let x = point[0]
           let y = point[1]
           if (!point[3]) {
-          if (cursed) {
-            const radians = (Math.PI / 360) * ((Math.cos(time/1000)*360) + (Math.sin(time/2500)*360))
-            const center = {
-              x: 500+(Math.abs(Math.sin(time/10000))**1000*(Math.sin(time/10000)>0?1:-1))*1000,
-              y: 500+(Math.abs(Math.cos(time/10000))**1000*(Math.cos(time/10000)>0?1:-1))*1000
+            x -= viewport.x
+            y -= viewport.y
+            if (cursed) {
+              const radians = (Math.PI / 360) * ((Math.cos(time/1000)*360) + (Math.sin(time/2500)*360))
+              const center = {
+                x: 500+(Math.abs(Math.sin(time/10000))**1000*(Math.sin(time/10000)>0?1:-1))*1000,
+                y: 500+(Math.abs(Math.cos(time/10000))**1000*(Math.cos(time/10000)>0?1:-1))*1000
+              }
+              const translatedX = x - center.x
+              const translatedY = y - center.y
+              const rotatedX = translatedX * Math.cos(radians) - translatedY * Math.sin(radians)
+              const rotatedY = translatedX * Math.sin(radians) + translatedY * Math.cos(radians)
+              x = rotatedX + center.x
+              y = rotatedY + center.y
+              x += Math.random() < .01 ? (Math.random() < .5 ? 50 : -50) : 0
+              y += Math.random() < .01 ? (Math.random() < .5 ? 50 : -50) : 0
+              if (color) {
+                color[0] = 255 - color[0]
+                color[1] = 255 - color[1]
+                color[2] = 255 - color[2]
+                color[3] = 1 - (Math.abs(Math.sin(time/(Math.cos(time/10000)**2*10000)))) + .1
+              }
+              if (item.mode == "fill") {
+                ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]},${color[3]})`
+              } else if (item.mode == "outline") {
+                ctx.strokeStyle = `rgb(${color[0]},${color[1]},${color[2]},${color[3]})`
+              }    
             }
-            const translatedX = x - center.x
-            const translatedY = y - center.y
-            const rotatedX = translatedX * Math.cos(radians) - translatedY * Math.sin(radians)
-            const rotatedY = translatedX * Math.sin(radians) + translatedY * Math.cos(radians)
-            x = rotatedX + center.x
-            y = rotatedY + center.y
-            x += Math.random() < .01 ? (Math.random() < .5 ? 50 : -50) : 0
-            y += Math.random() < .01 ? (Math.random() < .5 ? 50 : -50) : 0
-            if (color) {
-              color[0] = 255 - color[0]
-              color[1] = 255 - color[1]
-              color[2] = 255 - color[2]
-              color[3] = 1 - (Math.abs(Math.sin(time/(Math.cos(time/10000)**2*10000)))) + .1
-            }
-            if (item.mode == "fill") {
-              ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]},${color[3]})`
-            } else if (item.mode == "outline") {
-              ctx.strokeStyle = `rgb(${color[0]},${color[1]},${color[2]},${color[3]})`
-            }    
-          }
-          x = x * scale.x + canvasOffsetX
-          y = y * scale.y + canvasOffsetY
+            x = x * scale.x + canvasOffsetX
+            y = y * scale.y + canvasOffsetY
           }
           if (point[2]) {
             ctx.moveTo(x,y)
@@ -751,9 +761,12 @@ function update(inputTime) {
     const keys = Object.keys(levels);
     const randomIndex = Math.floor(Math.random() * keys.length);
     const randomKey = keys[randomIndex];
-    //initializeLevel(levels[randomKey])
-    initializeLevel(levels.level5)
+    initializeLevel(levels[randomKey])
   }
+
+  viewport.x += Math.cos(updateindex/50 )*5
+  viewport.y += Math.sin(updateindex/100)*2.5
+  viewport.size += Math.sin(updateindex/25)*25
 
   //start the next loop
   updateindex++
@@ -1054,7 +1067,8 @@ const todo = {
  "Add a debug option to show collisions" : "Done",
  "Add constraints" : "Done",
  "Add a render option to show constraints" : "Done",
- "Create a viewport" : "Planned",
+ "Create a viewport" : "Done",
+ "Make the viewport follow a block" : "Planned",
  "Fix constraint rendering to take pointA / B into account" : "Planned",
  "Add shapes that have multiple parts / constraints" : "Planned",
  "Switch to webgl" : "Planned",
