@@ -342,7 +342,7 @@ function render(inputOptions) {
     }
 
     //render wireframes / show collisions / show viewport target
-    if (options.showWireframes || options.showCollisions || showViewportTarget) {
+    if (options.showWireframes || options.showCollisions || options.showViewportTarget) {
       let body, part, i, j, k
 
       //check for collisions
@@ -759,7 +759,6 @@ function viewportFollow() {
 
   //if there is no target, set target to a random block
   if (!(matterLinks[targetId])) {
-    console.log("trying for a target")
     const blocks = Object.keys(matterLinks)
     const target = blocks[Math.floor(Math.random()*blocks.length)]
     viewport.targetId = target
@@ -792,11 +791,11 @@ function update(inputTime) {
 
   Engine.update(engine, Math.floor(deltaTime, maxDeltaTime)) //tick the engine with deltaTime to keep speed 
 
-  render({debugMode:true}) //render everthing
+  render({debugMode:false}) //render everthing
 
   collisionDetection() //run collision functions / generate collision stats
 
-  viewportFollow()
+  viewportFollow()//makes the viewport follow its target block
   
   if (updateindex % framesPerSlide == 0) {
     const keys = Object.keys(levels);
