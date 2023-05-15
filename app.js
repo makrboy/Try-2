@@ -242,10 +242,11 @@ function render(inputOptions) {
 
   //set options
   let options = {
-    renderWireframes: false,
-    renderCoverArt: true,
-    renderBounds: false,
+    showWireframes: false,
+    showCoverArt: true,
+    showBounds: false,
     showCollisions: false,
+    showConstraints: false,
     debugMode: false,
     ...inputOptions
   }
@@ -256,7 +257,7 @@ function render(inputOptions) {
     let matterBodies = Composite.allBodies(engine.world)
 
     // //render block art 
-    if (options.renderCoverArt && !options.debugMode) {
+    if (options.showCoverArt && !options.debugMode) {
       for (let matterBodyIndex in matterBodies) {
         const matterBody = matterBodies[matterBodyIndex]
         const matterBodyLink = matterBody.id
@@ -321,7 +322,7 @@ function render(inputOptions) {
     }
 
     //render wireframes / show collisions
-    if (options.renderWireframes || options.showCollisions || options.debugMode) {
+    if (options.showWireframes || options.showCollisions || options.debugMode) {
       let body, part, i, j, k
 
       //check for collisions
@@ -373,7 +374,7 @@ function render(inputOptions) {
         if (newPath.length > 0) {
 
           //render the outline
-          if (options.renderWireframes || options.debugMode) {
+          if (options.showWireframes || options.debugMode) {
             addToRenderStack({mode:"outline",stage:5,color:[0,150,255],steps:newPath,width:1})
           }
   
@@ -399,15 +400,16 @@ function render(inputOptions) {
                 break
               }
             }
+
+            //add it to the renderStack
             addToRenderStack({mode:"fill",stage:5,color:color,steps:newPath,width:1})
-  
           }
         }  
       }
     }
 
     //render bounding boxes 
-    if (options.renderBounds || options.debugMode) {
+    if (options.showBounds || options.debugMode) {
       for (let bodyIndex in matterBodies) {
         const bounds = matterBodies[bodyIndex].bounds
         let newPath = []
@@ -416,6 +418,20 @@ function render(inputOptions) {
         newPath.push([bounds.max.x,bounds.min.y])
         newPath.push([bounds.min.x,bounds.min.y])
         addToRenderStack({stage:5,steps:newPath,color:[200,0,0],width:2,mode:"outline"})
+      }
+    }
+
+    //render constraints
+    if (options.showConstraints || options.debugMode) {
+      for (const constraintIndex in engine.world.constraints) {
+        const constraint = engine.world.constraints[constraintIndex]
+        const pointA = constraint.bodyA.position
+        const pointB = constraint.bodyB.position
+        const steps = [[pointA.x,pointA.y],[pointB.x,pointB.y]]
+        const targetDistance = constraint.length
+        const currentDistance = Math.sqrt(Math.pow(pointB.x - pointA.x, 2) + Math.pow(pointB.y - pointA.y, 2))
+        const offset = Math.abs((currentDistance - targetDistance) / targetDistance * 255 * 5)
+        addToRenderStack({mode:"outline",stage:5,color:[offset,255-offset,0],steps:steps,width:1})
       }
     }
 
@@ -717,7 +733,7 @@ function update(inputTime) {
 
   Engine.update(engine, Math.floor(deltaTime, maxDeltaTime)) //tick the engine with deltaTime to keep speed 
 
-  render() //render everthing
+  render({debugMode:true}) //render everthing
   collisionDetection() //run collision functions / generate collision stats
   if (updateindex % framesPerSlide == 0) {
     const keys = Object.keys(levels);
@@ -726,7 +742,6 @@ function update(inputTime) {
     //initializeLevel(levels[randomKey])
     initializeLevel(levels.level5)
   }
-
 
   //start the next loop
   updateindex++
@@ -1026,7 +1041,8 @@ const todo = {
  "Make the Engine update speed take deltaTime" : "Done",
  "Add a debug option to show collisions" : "Done",
  "Add constraints" : "Done",
- "Add a render option to show comstraints" : "Planned",
+ "Add a render option to show constraints" : "Done",
+ "Add shapes that have multiple parts / constraints" : "Planned",
  "Switch to webgl" : "Planned",
  "Add moving veiw area (like when a character moves around in mario)" : "Planned",
  "Add a charater" : "Planned",
