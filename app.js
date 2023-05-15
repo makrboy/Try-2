@@ -76,6 +76,7 @@ let Engine = Matter.Engine,
     Detector = Matter.Detector,
     Body = Matter.Body,
     Composite = Matter.Composite,
+    Constraint = Matter.Constraint,
     Common = Matter.Common,
     Vertices = Matter.Vertices;
     
@@ -130,7 +131,7 @@ function addPhysicsObject(x ,y ,scale, block, options) {
   block.offset = offset
   block.link = body.id
   matterLinks[block.link] = block
-
+  return(body.id)
 }
 
 //setting up a level
@@ -153,6 +154,7 @@ function initializeLevel(level) {
     level.setupFunc(level)
   }
   
+  //copy the blocks
   for (let index = 0; index < level.layout.length; index++) {
     let block = level.key[level.layout[index].key]
     let functions
@@ -167,6 +169,8 @@ function initializeLevel(level) {
     data[index].position = {x: point.x, y: point.y, scale: point.scale}
   }
   level.data = data
+
+  //grab the options / inputs
   for (let index = 0; index < level.data.length; index++) {
     let block = level.data[index]
 
@@ -177,9 +181,51 @@ function initializeLevel(level) {
     if (block.functions && block.functions.inputs) {
       block.functions.inputs(level.layout[index].inputs, level.data[index])
     }
+
+    //actually add the block the the world
     if (!Array.isArray(block) && block !== 0 && block.physics) {
-      addPhysicsObject(block.position.x,block.position.y,block.position.scale,block,options)
+      const id = addPhysicsObject(block.position.x,block.position.y,block.position.scale,block,options)
+
+      block.id = id
     }
+  }
+
+  //create constraints
+  for (let constraintIndex in level.constraints) {
+    const constraint = level.constraints[constraintIndex]
+    
+    //get the ids of the bodies
+    let bodyAId = data[constraint.bodyA].id
+    let bodyBId = data[constraint.bodyB].id
+    let bodyA, bodyB
+
+    //grab all matter bodies
+    let matterBodies = Composite.allBodies(engine.world)
+
+    //find the bodies based on their ids
+    for (let bodyIndex in matterBodies) {
+      const id = matterBodies[bodyIndex].id
+      if (id == bodyAId) {
+        bodyA = matterBodies[bodyIndex]
+      }
+      if (id == bodyBId) {
+        bodyB = matterBodies[bodyIndex]
+      }
+    }    
+
+    //create the constraint
+    const matterConstraint = Constraint.create({
+      bodyA: bodyA,
+      pointA: constraint.pointA,
+      bodyB: bodyB,
+      pointB: constraint.pointB,
+      length: constraint.length,
+      stiffness: constraint.stiffness,
+      damping: constraint.damping
+    })
+
+    //and add it to the world
+    Composite.add(engine.world,matterConstraint)
   }
 }
 
@@ -671,13 +717,14 @@ function update(inputTime) {
 
   Engine.update(engine, Math.floor(deltaTime, maxDeltaTime)) //tick the engine with deltaTime to keep speed 
 
-  render({showCollisions:true,renderCoverArt:false}) //render everthing
-  collisionDetection()
+  render() //render everthing
+  collisionDetection() //run collision functions / generate collision stats
   if (updateindex % framesPerSlide == 0) {
     const keys = Object.keys(levels);
     const randomIndex = Math.floor(Math.random() * keys.length);
     const randomKey = keys[randomIndex];
-    initializeLevel(levels[randomKey])
+    //initializeLevel(levels[randomKey])
+    initializeLevel(levels.level5)
   }
 
 
@@ -898,11 +945,6 @@ let levels = {
       {x: 600, y: 400, scale: 100, key: 1, inputs: {shape: [[0,0],[0,3],[2,3],[2,0]]}},
       {x: 100, y: 900, key: 1, scale: 100, inputs: {shape:[[0,0],[0,1],[8,1],[8,0]]}, options: {isStatic: true}}
     ],
-    setupFunc: function(self) {
-      for (let blockIndex in self.layout) {
-        //self.layout[blockIndex].options = {isStatic: true}
-      }
-    }
   },
   level3: {
     key: [
@@ -935,6 +977,28 @@ let levels = {
       {x:450,y:0,key:2,scale:100},
       {x:500,y:500,key:1,scale:500,options:{isStatic:true}}
     ]
+  },
+  level5: {
+    key: [
+      blocks.basic,
+      blocks.clover
+    ],
+    layout: [
+      {x: 400, y: 200, key: 1, scale: 100},
+      {x: 600, y: 200, key: 1, scale: 100},
+      {x: 400, y: 400, key: 1, scale: 100},
+      {x: 600, y: 400, key: 1, scale: 100},
+      {x: 400, y: 600, key: 0, scale: 150, options: {isStatic: true}},
+      {x: 100, y: 900, key: 0, scale: 100, inputs: {shape:[[0,0],[0,1],[9,1],[9,0]]}, options: {isStatic: true}}
+    ],
+    constraints: [
+      {bodyA: 0, bodyB: 1, stiffness: .01},
+      {bodyA: 0, bodyB: 2, stiffness: .01},
+      {bodyA: 0, bodyB: 3, stiffness: .01},
+      {bodyA: 1, bodyB: 2, stiffness: .01},
+      {bodyA: 1, bodyB: 3, stiffness: .01},
+      {bodyA: 2, bodyB: 3, stiffness: .01},
+    ]
   }
 }
 
@@ -961,8 +1025,9 @@ const todo = {
  "Make update speed adjust to browser speed" : "Void",
  "Make the Engine update speed take deltaTime" : "Done",
  "Add a debug option to show collisions" : "Done",
+ "Add constraints" : "Done",
+ "Add a render option to show comstraints" : "Planned",
  "Switch to webgl" : "Planned",
- "Add compound blocks with joints" : "Planned",
  "Add moving veiw area (like when a character moves around in mario)" : "Planned",
  "Add a charater" : "Planned",
  "Add levels" : "Planned",
