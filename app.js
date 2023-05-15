@@ -201,12 +201,7 @@ function render(inputOptions) {
     renderBounds: false,
     showCollisions: false,
     debugMode: false,
-  }
-  inputOptions = inputOptions || {}
-  for (let settingName in options) {
-    if (inputOptions.hasOwnProperty(settingName)) {
-      options[settingName] = inputOptions[settingName]
-    }
+    ...inputOptions
   }
 
   //calculate render
@@ -970,11 +965,12 @@ const todo = {
  "Add compound blocks with joints" : "Planned",
  "Add moving veiw area (like when a character moves around in mario)" : "Planned",
  "Add a charater" : "Planned",
+ "Add levels" : "Planned",
  "Add more characters" : "Planned",
  "Make Matter levels have any size" : "Planned",
  "Add sounds?" : "Planned",
  "Add saves" : "Planned",
- "Add a modular GUI (use a library?)" : "Planned",
+ "Create a modular GUI" : "Planned",
  "Add level / block creator / editor" : "Planned",
  "Add enemies?" : "Planned",
  "Add a server where people can upload/download their profiles/levels?" : "Planned",
