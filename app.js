@@ -49,10 +49,11 @@ let viewport = {
   size: 1000,
   x: 0,
   y: 0,
-  targetId: null
+  targetId: 0,
+  transitionMode: Math.floor(Math.random()*4) //choose a random transistion mode each run
 }
 const maxDeltaTime = 100
-const framesPerSlide = 250
+const framesPerSlide = 500
 const cursed = Math.random() < .000001 ? true : false 
 //there is a one-in-a-million chance that something will happen to the renderer
 
@@ -770,12 +771,47 @@ function viewportFollow() {
     for (let bodyIndex in matterBodies) {
       const body = matterBodies[bodyIndex]
       if (body.id == targetId) {
-        const targetPosistion = body.position
+
+        //calculate target position
+        const targetPosistion = {
+          x: body.position.x - viewport.size / 2,
+          y: body.position.y - viewport.size / 2
+        }
+
+        //calculate offset
+        const offset = {
+          x: targetPosistion.x - viewport.x,
+          y: targetPosistion.y - viewport.y
+        }
 
         //set viewport position
-        viewport.x = (targetPosistion.x - viewport.size / 2)
-        viewport.y = (targetPosistion.y - viewport.size / 2)
-        break
+
+        //seeing double
+        if (viewport.transitionMode == 0) {
+          viewport.x += offset.x * 1.9
+          viewport.y += offset.y * 1.9
+        }
+
+        //boring slide
+        if (viewport.transitionMode == 1) {
+          viewport.x += Math.pow(offset.x / 100, 2) * (offset.x < 0 ? -1 : 1)
+          viewport.y += Math.pow(offset.y / 100, 2) * (offset.y < 0 ? -1 : 1)
+        }
+
+        //instant movement
+        if (viewport.transitionMode == 2) {
+          viewport.x += offset.x
+          viewport.y += offset.y
+        }
+
+        //shaky with speed
+        if (viewport.transitionMode == 3) {
+          let angle = Math.atan2(offset.y, offset.x)// / Math.PI * 180
+          let distance = Math.sqrt(offset.x * offset.x + offset.y * offset.y)
+          angle += Math.random()
+          viewport.x += Math.cos(angle) * distance / 10
+          viewport.y += Math.sin(angle) * distance / 10
+        }
       }
     }
   }
@@ -791,17 +827,18 @@ function update(inputTime) {
 
   Engine.update(engine, Math.floor(deltaTime, maxDeltaTime)) //tick the engine with deltaTime to keep speed 
 
-  render({debugMode:false}) //render everthing
+  render({debugMode:true}) //render everthing
 
   collisionDetection() //run collision functions / generate collision stats
 
-  viewportFollow()//makes the viewport follow its target block
+  viewportFollow() //makes the viewport follow its target block
   
   if (updateindex % framesPerSlide == 0) {
     const keys = Object.keys(levels);
     const randomIndex = Math.floor(Math.random() * keys.length);
     const randomKey = keys[randomIndex];
     initializeLevel(levels[randomKey])
+    //initializeLevel(levels.level5)
   }
 
   //start the next loop
@@ -1068,12 +1105,12 @@ let levels = {
       {x: 100, y: 900, key: 0, scale: 100, inputs: {shape:[[0,0],[0,1],[9,1],[9,0]]}, options: {isStatic: true}}
     ],
     constraints: [
-      {bodyA: 0, bodyB: 1, stiffness: .01},
-      {bodyA: 0, bodyB: 2, stiffness: .01},
-      {bodyA: 0, bodyB: 3, stiffness: .01},
-      {bodyA: 1, bodyB: 2, stiffness: .01},
-      {bodyA: 1, bodyB: 3, stiffness: .01},
-      {bodyA: 2, bodyB: 3, stiffness: .01},
+      {bodyA: 0, bodyB: 1, stiffness: .005},
+      {bodyA: 0, bodyB: 2, stiffness: .005},
+      {bodyA: 0, bodyB: 3, stiffness: .005},
+      {bodyA: 1, bodyB: 2, stiffness: .005},
+      {bodyA: 1, bodyB: 3, stiffness: .005},
+      {bodyA: 2, bodyB: 3, stiffness: .005},
     ]
   }
 }
@@ -1106,11 +1143,14 @@ const todo = {
  "Create a viewport" : "Done",
  "Make the viewport follow a block" : "Done",
  "Add a render option to show the viewpoint target" : "Done",
- "Make the viewport follow more smooth" : "Planned",
+ "Make the viewport follow more smooth" : "Done",
+ "Add more viewport transitions" : "Done",
+ "Add textures for constraints" : "Planned",
  "Fix constraint rendering to take pointA / B into account" : "Planned",
  "Add shapes that have multiple parts / constraints" : "Planned",
+ "Add a player block" : "Planned",
+ "Make the player move / jump" : "Planned",
  "Switch to webgl" : "Planned",
- "Add a charater" : "Planned",
  "Add levels" : "Planned",
  "Add more characters" : "Planned",
  "Add sounds?" : "Planned",
