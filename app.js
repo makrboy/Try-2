@@ -7,6 +7,11 @@ ctx.save()
 let canvasX, canvasY, canvasOffsetX, canvasOffsetY, 
 screenX, screenY, currentLevel
 let renderStack = {}
+let keybinds = {
+  selfRight : "arrowright",
+  selfLeft : "arrowleft",
+  selfJump : "c"
+}
 let playerInput = {
   keys:{
     allowed:[],
@@ -41,7 +46,7 @@ let playerInput = {
 playerInput.keys.allowed = ['tab', 'delete', 'escape', 'backspace', '0', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', 'l', 'k', 'j', 'h', 'g', 'f', 'd', 's', 'a', 'z', 'x', 'c', 'v', 'b', 'n', 'm', 'shift', ' ', 'enter', 'arrowright', 'arrowleft', 'arrowup', 'arrowdown']
 playerInput.mouse.buttons.names = {0:"left",1:"middle",2:"right"}
 let matterLinks = {}
-let warp = false
+let warp = true
 let time = Date.now()
 let lastTime = time
 let updateindex = 0
@@ -826,7 +831,7 @@ function update(inputTime) {
 
   Engine.update(engine, Math.floor(deltaTime, maxDeltaTime)) //tick the engine with deltaTime to keep speed 
 
-  render({debugMode:false}) //render everthing
+  render({debugMode:true}) //render everthing
 
   collisionDetection() //run collision functions / generate collision stats
 
@@ -1023,7 +1028,7 @@ let blocks = {
             const keys = playerInput.keys.current
 
             //all this to make it jump
-            if (keys[" "]) {
+            if (keys[keybinds.selfJump]) {
               let collisionIds = matterLinks[id].physics.collisions.current
               let collisionTargets = [self]
               for (let index = 0; index < matterBodies.length; index++) {
@@ -1054,15 +1059,15 @@ let blocks = {
                 angle = {x:x,y:y}
               }
               if (angle.x || angle.y) {
-                const speed = .3
-                Body.applyForce(self, self.position, {x:angle.x*speed,y:angle.y*speed})
+                const jumpPower = .7
+                Body.applyForce(self, self.position, {x:angle.x*jumpPower,y:angle.y*jumpPower})
               }
             }
-             if (keys.a) {
+            if (keys[keybinds.selfLeft]) {
               Body.setAngularVelocity(self, Math.max(self.angularVelocity - .01, -.25), true)
               Body.applyForce(self, self.position, {x:-.01,y:0})
             }
-            if (keys.d) {
+            if (keys[keybinds.selfRight]) {
               Body.setAngularVelocity(self, Math.min(self.angularVelocity + .01, .25), true)
               Body.applyForce(self, self.position, {x:.01,y:0})
             }
@@ -1196,11 +1201,13 @@ let levels = {
   level6: {
     key: [
       blocks.basic,
+      blocks.ball,
       blocks.controlled
     ],
     layout: [
-      {x: 500, y: 500, key: 1, scale: 90},
+      {x: 1500, y: 1500, key: 2, scale: 100},
     ],
+    constraints: [],
     setupFunc: function() {
       let layout = levels.level6.layout
       for (let index = 1; index < 250; index++) {
@@ -1208,9 +1215,17 @@ let levels = {
           x: Math.random() * 5000,
           y: Math.random() * 5000,
           scale: Math.random() * 100 + 50,
-          key: 0,
-          options: {isStatic: true},
+          key: (Math.floor(Math.random()*2)),
+          options: (index % 2 == 0 ? {} :{isStatic: true}),
           inputs: {angle: Math.random() * 360}
+        }
+        if (index % 2 == 0) {
+          levels.level6.constraints[Math.floor((index-1)/2)] = {
+            bodyA: index,
+            bodyB: index - 1,
+            length: 500,
+            stiffness: (Math.random()>.5?1:.001)
+          }
         }
       }
       levels.level6.layout = layout
@@ -1246,9 +1261,13 @@ const todo = {
  "Create a viewport" : "Done",
  "Make the viewport follow a block" : "Done",
  "Add a render option to show the viewpoint target" : "Done",
- "Make the viewport follow more smooth" : "Done",
+ "Make the viewport following more smooth" : "Done",
  "Add more viewport transitions" : "Done",
+ "Add an object for control mapping" : "Done",
+ "Add a settings menu for changing keybinds" : "Planned",
+ "Make the shape of the viewport strech to fill the screen" : "Planned",
  "Add textures for constraints" : "Planned",
+ "Add a render option to show static blocks" : "Planned",
  "Add collision filtering" : "Planned",
  "Fix constraint rendering to take pointA / B into account" : "Planned",
  "Add shapes that have multiple parts / constraints" : "Planned",
@@ -1260,7 +1279,10 @@ const todo = {
  "Add sounds?" : "Planned",
  "Add saves" : "Planned",
  "Create a modular GUI" : "Planned",
- "Add level / block creator / editor" : "Planned",
+ "Add shape creator / editor" : "Planned",
+ "Add texture creator / editor" : "Planned",
+ "Add block creator / editor" : "Planned",
+ "Add level creator / editor" : "Planned",
  "Add enemies?" : "Planned",
  "Add a server where people can upload/download their profiles/levels?" : "Planned",
 }
