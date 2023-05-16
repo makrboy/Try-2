@@ -46,14 +46,14 @@ let time = Date.now()
 let lastTime = time
 let updateindex = 0
 let viewport = {
-  size: 1000,
+  size: 1500,
   x: 0,
   y: 0,
   targetId: 0,
   transitionMode: Math.floor(Math.random()*4) //choose a random transistion mode each run
 }
 const maxDeltaTime = 100
-const framesPerSlide = 500
+const framesPerSlide = 5000
 const cursed = Math.random() < .000001 ? true : false 
 //there is a one-in-a-million chance that something will happen to the renderer
 
@@ -129,7 +129,7 @@ function addPhysicsObject(x ,y ,scale, block, options) {
   offset.max.x = bounds.max.x - body.bounds.max.x
   offset.max.y = bounds.max.y - body.bounds.max.y
 
-  const radians = (block.angle * (Math.PI / 180)) || 0
+  const radians = (block.physics.angle * (Math.PI / 180)) || 0
 
   Matter.Body.setPosition(body, {x: x + offset.min.x - .5 * scale, y: y + offset.min.y - .5 * scale}, false)
   Matter.Body.rotate(body, radians)
@@ -192,7 +192,6 @@ function initializeLevel(level) {
     //actually add the block the the world
     if (!Array.isArray(block) && block !== 0 && block.physics) {
       const id = addPhysicsObject(block.position.x,block.position.y,block.position.scale,block,options)
-
       block.id = id
     }
   }
@@ -827,7 +826,7 @@ function update(inputTime) {
 
   Engine.update(engine, Math.floor(deltaTime, maxDeltaTime)) //tick the engine with deltaTime to keep speed 
 
-  render({debugMode:true}) //render everthing
+  render({debugMode:false}) //render everthing
 
   collisionDetection() //run collision functions / generate collision stats
 
@@ -837,8 +836,8 @@ function update(inputTime) {
     const keys = Object.keys(levels);
     const randomIndex = Math.floor(Math.random() * keys.length);
     const randomKey = keys[randomIndex];
-    initializeLevel(levels[randomKey])
-    //initializeLevel(levels.level5)
+    //initializeLevel(levels[randomKey])
+    initializeLevel(levels.level6)
   }
 
   //start the next loop
@@ -975,7 +974,10 @@ let blocks = {
       ]
     },
     physics: {
-      shape: [[0.4,0],[0.6,0],[0.8,0.1],[0.9,0.2],[1,0.4],[1,0.6],[0.9,0.8],[0.8,0.9],[0.6,1],[0.4,1],[0.2,0.9],[0.1,0.8],[0,0.6],[0,0.4],[0.1,0.2],[0.2,0.1]]
+      shape: [[0.4,0],[0.6,0],[0.8,0.1],[0.9,0.2],[1,0.4],[1,0.6],[0.9,0.8],[0.8,0.9],[0.6,1],[0.4,1],[0.2,0.9],[0.1,0.8],[0,0.6],[0,0.4],[0.1,0.2],[0.2,0.1]],
+      collisions: {
+        selfTags: ["ball", "solid"]
+      },
     }
   },
   test: {
@@ -988,8 +990,86 @@ let blocks = {
       ]
     },
     physics: {
-      shape: [[0,0],[0,0],[0.333,0],[0.5,0.5],[0.666,0],[1,0],[1,1],[0,1]]
+      shape: [[0,0],[0,0],[0.333,0],[0.5,0.5],[0.666,0],[1,0],[1,1],[0,1]],
+      collisions: {
+        selfTags: ["test", "solid"]
+      },
+    }
+  },
+  controlled: {
+    coverArt: {
+      layers: [
+        {
+          color: [100,100,0,.5],
+          steps: [[0,0.25],[0.25,0],[0.75,0],[1,0.25],[1,0.75],[0.75,1],[0.25,1],[0,0.75]]
 
+        }
+      ]
+    },
+    physics: {
+      shape: [[0,0.25],[0.25,0],[0.75,0],[1,0.25],[1,0.75],[0.75,1],[0.25,1],[0,0.75]],
+      collisions: {
+        selfTags: ["controlled", "solid"],
+        collisionTags: ["solid"]
+      },
+    },
+    functions: {
+      onRender: function(id) {
+        viewport.targetId = id
+        const matterBodies = Composite.allBodies(engine.world)
+        for (let bodyIndex in matterBodies) {
+          if (matterBodies[bodyIndex].id == id) {
+            let self = matterBodies[bodyIndex]
+            const keys = playerInput.keys.current
+
+            //all this to make it jump
+            if (keys[" "]) {
+              let collisionIds = matterLinks[id].physics.collisions.current
+              let collisionTargets = [self]
+              for (let index = 0; index < matterBodies.length; index++) {
+                const matterId = matterBodies[index].id
+                for (let idIndex in collisionIds) {
+                  if (matterId == collisionIds[idIndex]) {
+                    collisionTargets.push(matterBodies[index])
+                    collisionIds.splice(collisionIds.indexOf(matterId),1)
+                  }
+                }
+              }
+              let detector = Detector.create()
+              Detector.setBodies(detector, collisionTargets)
+              let rawCollisions = Detector.collisions(detector)
+              let collisionAverage = {x:0,y:0}
+              let angle = {}
+              for (let index = 0; index < rawCollisions.length; index++) {
+                const collision = rawCollisions[index]
+                if (collision.bodyA.id == id || collision.bodyB.id == id) {
+                  collisionAverage.x += collision.penetration.x
+                  collisionAverage.y += collision.penetration.y
+                }
+                let x = collisionAverage.x
+                let y = collisionAverage.y
+                const length = Math.sqrt(x*x+y*y)
+                x /= length
+                y /= length
+                angle = {x:x,y:y}
+              }
+              if (angle.x || angle.y) {
+                const speed = .3
+                Body.applyForce(self, self.position, {x:angle.x*speed,y:angle.y*speed})
+              }
+            }
+             if (keys.a) {
+              Body.setAngularVelocity(self, Math.max(self.angularVelocity - .01, -.25), true)
+              Body.applyForce(self, self.position, {x:-.01,y:0})
+            }
+            if (keys.d) {
+              Body.setAngularVelocity(self, Math.min(self.angularVelocity + .01, .25), true)
+              Body.applyForce(self, self.position, {x:.01,y:0})
+            }
+            break
+          }
+        }
+      }
     }
   }
 }
@@ -1112,6 +1192,29 @@ let levels = {
       {bodyA: 1, bodyB: 3, stiffness: .005},
       {bodyA: 2, bodyB: 3, stiffness: .005},
     ]
+  },
+  level6: {
+    key: [
+      blocks.basic,
+      blocks.controlled
+    ],
+    layout: [
+      {x: 500, y: 500, key: 1, scale: 90},
+    ],
+    setupFunc: function() {
+      let layout = levels.level6.layout
+      for (let index = 1; index < 250; index++) {
+        layout[index] = {
+          x: Math.random() * 5000,
+          y: Math.random() * 5000,
+          scale: Math.random() * 100 + 50,
+          key: 0,
+          options: {isStatic: true},
+          inputs: {angle: Math.random() * 360}
+        }
+      }
+      levels.level6.layout = layout
+    }
   }
 }
 
@@ -1146,10 +1249,11 @@ const todo = {
  "Make the viewport follow more smooth" : "Done",
  "Add more viewport transitions" : "Done",
  "Add textures for constraints" : "Planned",
+ "Add collision filtering" : "Planned",
  "Fix constraint rendering to take pointA / B into account" : "Planned",
  "Add shapes that have multiple parts / constraints" : "Planned",
- "Add a player block" : "Planned",
- "Make the player move / jump" : "Planned",
+ "Add a player block" : "In Progress",
+ "Make the player move / jump" : "Done",
  "Switch to webgl" : "Planned",
  "Add levels" : "Planned",
  "Add more characters" : "Planned",
